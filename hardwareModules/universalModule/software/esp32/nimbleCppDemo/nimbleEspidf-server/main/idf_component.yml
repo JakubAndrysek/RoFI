@@ -1,0 +1,5 @@
+dependencies:
+  idf: ">=5.0"
+  jac-device:
+    git: https://github.com/h2zero/esp-nimble-cpp.git
+    version: 1786d0ede39d33369ce8c21ff3b5de45b17594f2

@@ -1,0 +1,16 @@
+dependencies:
+  idf:
+    component_hash: null
+    source:
+      type: idf
+    version: 5.0.2
+  jac-device:
+    component_hash: ca50c27dbbc4ec784ba6d8bd93e5958d949be672b991102fe8478aae0e66b187
+    source:
+      git: https://github.com/h2zero/esp-nimble-cpp.git
+      path: .
+      type: git
+    version: 1786d0ede39d33369ce8c21ff3b5de45b17594f2
+manifest_hash: 37ae6d64d0688bdf93d140543ad7955f18c4125676fce36a304f4b7ba435c5a3
+target: esp32
+version: 1.0.0

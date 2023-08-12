@@ -54,6 +54,7 @@ endif()
 add_library(rofi::hal::rbprotocol ALIAS rbprotocol)
 
 
+
 FetchContent_Declare(
     gridui
     GIT_REPOSITORY https://github.com/RoboticsBrno/Esp32-RBGridUI.git
@@ -90,7 +91,7 @@ endfunction()
 
 idf_build_process(esp32
     COMPONENTS idf::freertos idf::esptool_py idf::esp_http_client idf::esp_wifi
-               idf::lwip idf::console idf::nvs_flash idf::esp_hw_support idf::esp_rom idf::spiffs
+               idf::lwip idf::console idf::nvs_flash idf::esp_hw_support idf::esp_rom idf::spiffs idf::bt
                idf::esp_timer idf::vfs idf::spi_flash idf::esp_eth idf::esp_netif idf::newlib idf::fatfs idf::pthread
     SDKCONFIG ${CMAKE_CURRENT_LIST_DIR}/sdkconfig
     BUILD_DIR ${CMAKE_BINARY_DIR})
@@ -145,6 +146,7 @@ add_application(hardwareModules/universalModule/software/esp32/dynamixelConfigur
 add_application(hardwareModules/universalModule/software/esp32/console)
 add_application(hardwareModules/universalModule/software/esp32/gridui)
 add_application(hardwareModules/universalModule/software/esp32/jaculus)
+add_application(hardwareModules/universalModule/software/esp32/nimbleDemo)
 
 
 # Add the examples
