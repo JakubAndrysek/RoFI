@@ -115,7 +115,26 @@ if(NOT Jaculus-dcore_POPULATED)
 endif()
 
 
+FetchContent_Declare(
+  esp_nimble_cpp
+  GIT_REPOSITORY https://github.com/h2zero/esp-nimble-cpp.git
+  GIT_TAG        1786d0ede39d33369ce8c21ff3b5de45b17594f2
+)
+FetchContent_GetProperties(esp_nimble_cpp)
+if(NOT esp_nimble_cpp_POPULATED)
+  FetchContent_Populate(esp_nimble_cpp)
 
+  file(GLOB_RECURSE SRC ${esp_nimble_cpp_SOURCE_DIR}/src/*.cpp ${esp_nimble_cpp_SOURCE_DIR}/src/*.c ${esp_nimble_cpp_SOURCE_DIR}/src/*.h)
+  add_library(esp_nimble_cpp ${SRC})
+  include_directories(${esp_nimble_cpp_SOURCE_DIR}/src)
+  target_include_directories(esp_nimble_cpp PUBLIC src)
+  # target_compile_definitions(esp_nimble_cpp PUBLIC -DESP_PLATFORM=1 CONFIG_IDF_TARGET_ESP32=1)
+  set_property(TARGET esp_nimble_cpp PROPERTY CXX_STANDARD 20)
+  target_link_libraries(esp_nimble_cpp PUBLIC idf::freertos idf::esptool_py idf::esp_http_client idf::esp_wifi
+  idf::lwip idf::console idf::nvs_flash idf::esp_hw_support idf::esp_rom idf::spiffs idf::bt esp::ble
+  idf::esp_timer idf::vfs idf::spi_flash idf::esp_eth idf::esp_netif idf::newlib idf::fatfs idf::pthread idf::driver)
+endif()
+add_library(esp::ble ALIAS esp_nimble_cpp)
 
 
 
@@ -146,7 +165,8 @@ add_application(hardwareModules/universalModule/software/esp32/dynamixelConfigur
 add_application(hardwareModules/universalModule/software/esp32/console)
 add_application(hardwareModules/universalModule/software/esp32/gridui)
 add_application(hardwareModules/universalModule/software/esp32/jaculus)
-add_application(hardwareModules/universalModule/software/esp32/nimbleDemo)
+add_application(hardwareModules/universalModule/software/esp32/nimbleCppNew)
+# add_application(hardwareModules/universalModule/software/esp32/nimbleCppDemo/nimbleEspidfBasic)
 
 
 # Add the examples

@@ -76,7 +76,7 @@ class MainApp(QtWidgets.QWidget):
         super(MainApp, self).__init__()
 
         uic.loadUi('/media/psf/Home/Documents/git/paradise-fi/RoFI/hardwareModules/universalModule/software/esp32/nimbleCppDemo/nimblePython-client/bt_gui.ui', self)
-        self.input.setText("24:7F:0E:E6:AE:34")
+        self.input.setText("3B:7D:C6:3F:3E:28")
 
         # Connect signals and slots
         self.connect_button.clicked.connect(self.on_connect)
