@@ -20,6 +20,7 @@
 #include <esp_log.h>
 #include <esp_heap_caps.h>
 #include <esp_ota_ops.h>
+#include <spi_flash_mmap.h>
 #include <esp_partition.h>
 
 #include <espDriver/gpio.hpp>

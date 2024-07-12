@@ -7,6 +7,7 @@
 // Temporary work-around
 void mask_to_address(uint8_t mask, ip6_addr_t* m);
 
+#include <algorithm>
 #include <cassert>
 #include <cstdint>
 #include <type_traits>
