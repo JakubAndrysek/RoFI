@@ -37,6 +37,8 @@ if(NOT lib_fort_POPULATED)
 endif()
 
 
+
+
 function(add_rofi_firmware name)
     cmake_parse_arguments(A "" "FLASH_SIZE" "SOURCES" ${ARGN})
     add_executable(${name} ${A_SOURCES})
@@ -52,13 +54,41 @@ function(add_application path)
     add_subdirectory($ENV{ROFI_ROOT}/${path} ${CMAKE_CURRENT_BINARY_DIR}/${path})
 endfunction()
 
+
+# Set policy to avoid linking issues with target_link_libraries across directories
+cmake_policy(SET CMP0079 NEW)
+
 idf_build_process(esp32
     COMPONENTS idf::freertos idf::esptool_py idf::esp_http_client idf::esp_wifi
-               idf::lwip idf::console idf::nvs_flash idf::esp_hw_support idf::esp_rom
-               idf::esp_timer idf::spiffs idf::vfs idf::spi_flash idf::esp_eth
-               idf::esp_netif idf::newlib idf::fatfs idf::pthread idf::esp_phy
+               idf::lwip idf::console idf::nvs_flash idf::esp_hw_support idf::esp_rom idf::spiffs
+               idf::esp_timer idf::spi_flash idf::esp_eth idf::esp_netif idf::fatfs idf::vfs idf::esp_phy
     SDKCONFIG ${CMAKE_CURRENT_LIST_DIR}/sdkconfig
     BUILD_DIR ${CMAKE_BINARY_DIR})
+
+FetchContent_Declare(
+    Jaculus-dcore
+    GIT_REPOSITORY https://github.com/cubicap/Jaculus-dcore.git
+    GIT_TAG        v0.0.16
+)
+
+FetchContent_GetProperties(Jaculus-dcore)
+if(NOT Jaculus-dcore_POPULATED)
+  FetchContent_Populate(jaculus-dcore)
+  add_subdirectory(${jaculus-dcore_SOURCE_DIR} ${jaculus-dcore_BINARY_DIR})
+
+  # Jaculus doesn't link to idf::newlib (which IDF component does automatically, let's fix it
+  target_link_libraries(jac-machine PUBLIC idf::vfs)
+  target_link_libraries(jac-link INTERFACE idf::vfs)
+  target_link_libraries(quickjs PUBLIC idf::vfs -DESP_PLATFORM=1)
+
+  target_compile_options(quickjs PRIVATE
+      -mtext-section-literals
+      -D__TM_GMTOFF=tm_gmtoff
+      -D__linux__
+  )
+
+  target_compile_options(quickjs PUBLIC -mtext-section-literals -mlongcalls)
+endif()
 
 # What follows is a huge, huge hack. Unless we link idf::freertos from the
 # top-level CMakeLists.txt, we get generator error about self-refereincing
@@ -68,7 +98,7 @@ file(GENERATE OUTPUT ${HACK_SOURCE}
     CONTENT "void app_main() {}\n")
 add_executable(build_hack ${HACK_SOURCE})
 idf_build_executable(build_hack)
-target_link_libraries(build_hack idf::freertos idf::esp_phy)
+target_link_libraries(build_hack idf::freertos idf::esp_phy idf::vfs)
 set_target_properties(build_hack PROPERTIES EXCLUDE_FROM_ALL "exclude-NOTFOUND")
 
 add_component(atoms)
@@ -78,12 +108,14 @@ add_component(rofiHalInc)
 add_component(rofiHalEsp32)
 add_component(libfi)
 add_component(firmwareUpdater)
+add_component(rofiHalJaculus)
 # Introduce alias
 add_library(rofi::hal ALIAS rofi_hal_esp32)
 
 # Add utilities
 add_application(hardwareModules/universalModule/software/esp32/dynamixelConfigurator)
 add_application(hardwareModules/universalModule/software/esp32/console)
+add_application(hardwareModules/universalModule/software/esp32/jaculus)
 
 
 # Add the examples
