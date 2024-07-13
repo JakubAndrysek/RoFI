@@ -55,7 +55,8 @@ endfunction()
 idf_build_process(esp32
     COMPONENTS idf::freertos idf::esptool_py idf::esp_http_client idf::esp_wifi
                idf::lwip idf::console idf::nvs_flash idf::esp_hw_support idf::esp_rom
-               idf::esp_timer
+               idf::esp_timer idf::spiffs idf::vfs idf::spi_flash idf::esp_eth
+               idf::esp_netif idf::newlib idf::fatfs idf::pthread idf::esp_phy
     SDKCONFIG ${CMAKE_CURRENT_LIST_DIR}/sdkconfig
     BUILD_DIR ${CMAKE_BINARY_DIR})
 
@@ -67,7 +68,7 @@ file(GENERATE OUTPUT ${HACK_SOURCE}
     CONTENT "void app_main() {}\n")
 add_executable(build_hack ${HACK_SOURCE})
 idf_build_executable(build_hack)
-target_link_libraries(build_hack idf::freertos)
+target_link_libraries(build_hack idf::freertos idf::esp_phy)
 set_target_properties(build_hack PROPERTIES EXCLUDE_FROM_ALL "exclude-NOTFOUND")
 
 add_component(atoms)
