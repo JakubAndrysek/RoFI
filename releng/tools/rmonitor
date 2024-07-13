@@ -6,7 +6,7 @@ import subprocess
 import serial.tools.list_ports as list_ports
 import argparse
 from threading import Timer
-from common import *
+from common import *  # collectImages
 
 
 def monitorEsp32Image(img, extra):
@@ -17,8 +17,17 @@ def monitorEsp32Image(img, extra):
     env["ROFI_MONITORED_TARGET"] = img.name
     # ESP-IDF uses /dev/ttyUSB by default which is not suitable for RoFI.
     availablePorts = list_ports.comports()
-    if len(availablePorts):
-        env["ESPTOOL_PORT"] = availablePorts[0].device
+
+    if "ESPTOOL_PORT" in env:
+        print(f"Using port from 'ESPTOOL_PORT' env variable: {env.get('ESPTOOL_PORT')}")
+
+    if len(availablePorts) and "ESPTOOL_PORT" not in env:
+        for port in availablePorts:
+            if port.manufacturer == "Silicon Labs" or port.description.startswith("CP2102"):
+                env["ESPTOOL_PORT"] = port.device
+                break
+        else:
+            env["ESPTOOL_PORT"] = availablePorts[0].device
 
     command = ["python", monitor]
     command += extra

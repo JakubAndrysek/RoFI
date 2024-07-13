@@ -30,7 +30,7 @@ std::ostream& operator<<( std::ostream& o, spi_bus_config_t s );
 class SpiDeviceInterface {
 public:
     SpiDeviceInterface():
-        _s{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0 }
+        _s{ 0, 0, 0, 0, SPI_CLK_SRC_DEFAULT, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0 }
     {}
     operator spi_device_interface_config_t() const { return _s; }
     SpiDeviceInterface& commandBits( uint8_t p ) { _s.command_bits = p; return *this; }
