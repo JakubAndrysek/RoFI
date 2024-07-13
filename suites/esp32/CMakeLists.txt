@@ -76,7 +76,7 @@ add_component(lwip++)
 add_component(lwipcore)
 add_component(rofiHalInc)
 add_component(rofiHalEsp32)
-add_component(libfi)
+add_component(rofiEsp32)
 add_component(firmwareUpdater)
 # Introduce alias
 add_library(rofi::hal ALIAS rofi_hal_esp32)
