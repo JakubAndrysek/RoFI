@@ -8,15 +8,11 @@ import importlib.util
 import subprocess
 import os
 import sys
-
-sys.path.append(os.path.join(os.environ["IDF_PATH"], "tools"))
-idf_monitor_path = os.path.join(os.environ["IDF_PATH"], "tools", "idf_monitor.py")
-spec = importlib.util.spec_from_file_location("idf_monitor", idf_monitor_path)
-idf_monitor = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(idf_monitor)
+from esp_idf_monitor import idf_monitor
 
 # Original implementation in the case it is needed
 _run_make = idf_monitor.Monitor.run_make
+
 
 def alternative_run_make(self, target):
     with self:
@@ -28,10 +24,12 @@ def alternative_run_make(self, target):
         toolsPath = os.path.join(os.environ["ROFI_ROOT"], "releng", "tools")
 
         try:
-            subprocess.check_call(["python", os.path.join(toolsPath, "rmake"), imgTarget])
+            subprocess.check_call(
+                ["python", os.path.join(toolsPath, "rmake"), imgTarget]
+            )
             subprocess.check_call(["python", os.path.join(toolsPath, "rflash"), img])
         except Exception as e:
-            self.prompt_next_action('Build failed')
+            self.prompt_next_action("Build failed")
 
 
 idf_monitor.Monitor.run_make = alternative_run_make
