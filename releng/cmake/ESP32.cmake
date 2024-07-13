@@ -6,7 +6,7 @@ file(MAKE_DIRECTORY "${IMG_DIR}")
 
 function(generate_image_from A_ELF_TARGET A_FLASH_SIZE)
     get_filename_component(NAME_BASE "${A_ELF_TARGET}" NAME_WLE)
-    set(IMG_NAME "${NAME_BASE}.bin")
+    set(IMG_NAME "${NAME_BASE}.app")
     set(ELF_NAME "${NAME_BASE}.elf")
     set(TSTAMP "${A_ELF_TARGET}.bin_timestamp")
 
@@ -47,3 +47,4 @@ function(set_partition_table target tablefile)
     add_custom_target("${TABLE_BIN_NAME}" DEPENDS "${IMG_DIR}/${TABLE_BIN_NAME}")
     add_dependencies("${target}" "${TABLE_BIN_NAME}")
 endfunction()
+
