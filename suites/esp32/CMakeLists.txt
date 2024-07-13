@@ -36,7 +36,41 @@ if(NOT lib_fort_POPULATED)
   add_subdirectory(${lib_fort_SOURCE_DIR} ${lib_fort_BINARY_DIR})
 endif()
 
+FetchContent_Declare(
+    rbprotocol
+    GIT_REPOSITORY https://github.com/RoboticsBrno/RB3201-RBProtocol-library.git
+    GIT_TAG        v14.0.2
+)
+FetchContent_GetProperties(rbprotocol)
+if(NOT rbprotocol_POPULATED)
+  FetchContent_Populate(rbprotocol)
+  file(GLOB_RECURSE SRC ${rbprotocol_SOURCE_DIR}/src/*.cpp ${rbprotocol_SOURCE_DIR}/src/*.c ${rbprotocol_SOURCE_DIR}/src/*.h)
+  add_library(rbprotocol ${SRC})
+  include_directories(${rbprotocol_SOURCE_DIR}/src)
+  target_include_directories(rbprotocol PUBLIC src)
+  set_property(TARGET rbprotocol PROPERTY CXX_STANDARD 20)
+  target_link_libraries(rbprotocol PUBLIC idf::driver idf::esp_wifi idf::esp_rom idf::esp_timer idf::app_update idf::spiffs idf::nvs_flash atoms rofi::hal::inc mbedtls)
+endif()
+add_library(rofi::hal::rbprotocol ALIAS rbprotocol)
 
+
+FetchContent_Declare(
+    gridui
+    GIT_REPOSITORY https://github.com/RoboticsBrno/Esp32-RBGridUI.git
+    GIT_TAG        v5.3.2
+)
+FetchContent_GetProperties(gridui)
+if(NOT gridui_POPULATED)
+  FetchContent_Populate(gridui)
+
+  file(GLOB_RECURSE SRC ${gridui_SOURCE_DIR}/src/*.cpp ${gridui_SOURCE_DIR}/src/*.c ${gridui_SOURCE_DIR}/src/*.h)
+  add_library(gridui ${SRC})
+  include_directories(${gridui_SOURCE_DIR}/src)
+  target_include_directories(gridui PUBLIC src)
+  set_property(TARGET gridui PROPERTY CXX_STANDARD 20)
+  target_link_libraries(gridui PUBLIC idf::driver idf::esp_wifi idf::esp_rom idf::esp_timer idf::app_update idf::spiffs idf::nvs_flash atoms rofi::hal::inc rofi::hal::rbprotocol -DESP_PLATFORM=1)
+endif()
+add_library(rofi::hal::gridui ALIAS gridui)
 
 
 function(add_rofi_firmware name)
@@ -61,7 +95,7 @@ cmake_policy(SET CMP0079 NEW)
 idf_build_process(esp32
     COMPONENTS idf::freertos idf::esptool_py idf::esp_http_client idf::esp_wifi
                idf::lwip idf::console idf::nvs_flash idf::esp_hw_support idf::esp_rom idf::spiffs
-               idf::esp_timer idf::spi_flash idf::esp_eth idf::esp_netif idf::fatfs idf::vfs idf::esp_phy
+               idf::esp_timer idf::spi_flash idf::esp_eth idf::esp_netif idf::fatfs idf::vfs idf::esp_phy mbedtls
     SDKCONFIG ${CMAKE_CURRENT_LIST_DIR}/sdkconfig
     BUILD_DIR ${CMAKE_BINARY_DIR})
 
@@ -98,7 +132,7 @@ file(GENERATE OUTPUT ${HACK_SOURCE}
     CONTENT "void app_main() {}\n")
 add_executable(build_hack ${HACK_SOURCE})
 idf_build_executable(build_hack)
-target_link_libraries(build_hack idf::freertos idf::esp_phy idf::vfs)
+target_link_libraries(build_hack idf::freertos idf::esp_phy idf::vfs mbedtls)
 set_target_properties(build_hack PROPERTIES EXCLUDE_FROM_ALL "exclude-NOTFOUND")
 
 add_component(atoms)

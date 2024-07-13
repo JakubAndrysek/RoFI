@@ -25,7 +25,7 @@
 #include "espFeatures/extendLifetimeFeature.h"
 #include "espFeatures/timestampFeature.h"
 #include "espFeatures/wifiFeature.h"
-// #include "espFeatures/gridui/gridUiFeature.h"
+#include "espFeatures/gridui/gridUiFeature.h"
 
 #include "platform/espNvsKeyValue.h"
 #include "platform/espWifi.h"
@@ -68,7 +68,7 @@ using Machine = jac::ComposeMachine<
     TimestampFeature,
     ExtendLifetimeFeature,
     WifiFeature,
-    // GridUiFeature,
+    GridUiFeature,
     jac::KeyValueFeature,
     jac::EventLoopTerminal
 >;
