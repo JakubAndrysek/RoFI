@@ -1,0 +1,11 @@
+#!/bin/bash
+
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Define the relative paths to the Python interpreter and CLI tool
+PYTHON_INTERPRETER="$SCRIPT_DIR/../../softwareComponents/nimBleConnector/python/.venv/bin/python3"
+CLI_TOOL="$SCRIPT_DIR/../../softwareComponents/nimBleConnector/python/cli.py"
+
+# Execute the CLI tool with the provided arguments
+"$PYTHON_INTERPRETER" "$CLI_TOOL" "$@"

@@ -1,0 +1,5 @@
+bleak==0.22.2
+betterproto[compiler]==1.2.5
+grpcio-tools==1.65.1
+click==8.1.7
+colorlog==6.8.2

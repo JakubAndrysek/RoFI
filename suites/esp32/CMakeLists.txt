@@ -55,7 +55,7 @@ endfunction()
 idf_build_process(esp32
     COMPONENTS idf::freertos idf::esptool_py idf::esp_http_client idf::esp_wifi
                idf::lwip idf::console idf::nvs_flash idf::esp_hw_support idf::esp_rom
-               idf::esp_timer
+               idf::esp_timer idf::bt
     SDKCONFIG ${CMAKE_CURRENT_LIST_DIR}/sdkconfig
     BUILD_DIR ${CMAKE_BINARY_DIR})
 
@@ -70,6 +70,50 @@ idf_build_executable(build_hack)
 target_link_libraries(build_hack idf::freertos)
 set_target_properties(build_hack PROPERTIES EXCLUDE_FROM_ALL "exclude-NOTFOUND")
 
+# Add component https://github.com/h2zero/esp-nimble-cpp
+FetchContent_Declare(
+  esp_nimble_cpp
+  GIT_REPOSITORY https://github.com/h2zero/esp-nimble-cpp.git
+  GIT_TAG        21e1217e4ce520b276695dfc60e6151750561617 #v1.4.1
+)
+FetchContent_GetProperties(esp_nimble_cpp)
+if(NOT esp_nimble_cpp_POPULATED)
+  FetchContent_Populate(esp_nimble_cpp)
+
+  # add_subdirectory(${esp_nimble_cpp_SOURCE_DIR} ${esp_nimble_cpp_BINARY_DIR})
+  file(GLOB_RECURSE SRC ${esp_nimble_cpp_SOURCE_DIR}/src/*.cpp ${esp_nimble_cpp_SOURCE_DIR}/src/*.c ${esp_nimble_cpp_SOURCE_DIR}/src/*.h)
+
+  add_library(esp-nimble-cpp ${SRC})
+  include_directories(${esp_nimble_cpp_SOURCE_DIR}/src)
+  target_include_directories(esp-nimble-cpp PUBLIC src)
+  set_property(TARGET esp-nimble-cpp PROPERTY CXX_STANDARD 20)
+
+  target_compile_definitions(esp-nimble-cpp PUBLIC ESP_PLATFORM CONFIG_NIMBLE_CPP_ATT_VALUE_TIMESTAMP_ENABLED)
+  target_link_libraries(esp-nimble-cpp PUBLIC idf::freertos idf::nvs_flash idf::spi_flash idf::bt rofi::hal)
+endif()
+
+
+# Add component https://github.com/nanopb/nanopb
+FetchContent_Declare(
+  nanopb
+  GIT_REPOSITORY https://github.com/nanopb/nanopb.git
+  GIT_TAG        nanopb-0.4.8
+)
+
+FetchContent_GetProperties(nanopb)
+if(NOT nanopb_POPULATED)
+  FetchContent_Populate(nanopb)
+
+  # add "./pb_common.c" "./pb_decode.c" "./pb_encode.c"
+  file(GLOB_RECURSE SRC ${nanopb_SOURCE_DIR}/pb_common.c ${nanopb_SOURCE_DIR}/pb_decode.c ${nanopb_SOURCE_DIR}/pb_encode.c)
+
+  add_library(nanopb ${SRC})
+  include_directories(${nanopb_SOURCE_DIR})
+  target_include_directories(nanopb PUBLIC ${nanopb_SOURCE_DIR})
+  set_property(TARGET nanopb PROPERTY CXX_STANDARD 20)
+endif()
+
+
 add_component(atoms)
 add_component(lwip++)
 add_component(lwipcore)
@@ -77,6 +121,8 @@ add_component(rofiHalInc)
 add_component(rofiHalEsp32)
 add_component(libfi)
 add_component(firmwareUpdater)
+add_component(nimBleRofi)
+add_component(nimBleConnector)
 # Introduce alias
 add_library(rofi::hal ALIAS rofi_hal_esp32)
 
@@ -93,6 +139,9 @@ add_application(examples/hal/connectorHal)
 add_application(examples/hal/connectorMovementHal)
 add_application(examples/hal/connectorHalStatus)
 add_application(examples/hal/firmwareUpdater)
+add_application(examples/hal/rofi-nimble)
+add_application(examples/hal/rofi-nimble-basic)
+add_application(examples/hal/rofi-nimble-protobf)
 
 
 
