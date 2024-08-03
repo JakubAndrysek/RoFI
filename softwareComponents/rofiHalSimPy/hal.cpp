@@ -74,6 +74,7 @@ PYBIND11_MODULE( pyRofiHal, m ) {
     py::class_< RoFI > rofiC( m, "RoFI" );
     rofiC
         .def_property_readonly( "id", &RoFI::getId )
+        .def( "setId", &RoFI::setId )
         .def( "getJoint", &RoFI::getJoint )
         .def( "getConnector", &RoFI::getConnector )
         .def_property_readonly( "descriptor", &RoFI::getDescriptor )

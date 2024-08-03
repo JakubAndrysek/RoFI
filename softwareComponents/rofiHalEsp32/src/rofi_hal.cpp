@@ -20,6 +20,7 @@
 #include <esp_log.h>
 #include <esp_heap_caps.h>
 #include <esp_ota_ops.h>
+#include <spi_flash_mmap.h>
 #include <esp_partition.h>
 
 #include <espDriver/gpio.hpp>
@@ -28,6 +29,7 @@
 #include <bsp.hpp>
 #include <atoms/util.hpp>
 #include <logging.hpp>
+#include <nvs/nvs.hpp>
 
 namespace {
 
@@ -917,12 +919,23 @@ public:
             std::make_shared< ConnectorLocal >( &_connectorBus, GPIO_NUM_33 ),
             std::make_shared< ConnectorLocal >( &_connectorBus, GPIO_NUM_26 )
         } )
-    {} catch ( const std::runtime_error& e ) {
+    {
+        esp::EspNvs::initNvs();
+        _nvs = esp::EspNvs::open("rofi");
+    } catch ( const std::runtime_error& e ) {
         throw std::runtime_error( "Cannot intialize local RoFI Driver: "s + e.what() );
     }
 
     virtual RoFI::Id getId() const override {
-        return 0;
+        try {
+            return _nvs->getInt("id", 0);
+        } catch ( const std::runtime_error& e ) {
+            throw std::runtime_error( "Cannot read RoFI ID: "s + e.what() );
+        }
+    }
+
+    virtual void setId( RoFI::Id id ) override {
+        _nvs->setInt("id", id);
     }
 
     virtual Joint getJoint( int index ) override {
@@ -990,6 +1003,8 @@ private:
 
     std::shared_ptr< rofi::hal::Partition::Implementation > _runningPartition;
     bool _updateInitialized = false;
+    std::unique_ptr<esp::EspNvs> _nvs;
+    RoFI::Id _id = 0;
 };
 
 } // namespace
