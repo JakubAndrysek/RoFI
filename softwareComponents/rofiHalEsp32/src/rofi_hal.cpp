@@ -893,7 +893,6 @@ public:
 class RoFILocal : public RoFI::Implementation {
 public:
     RoFILocal() try:
-        _nvs( esp::EspNvs::open("rofi") ),
         _servoBus( bsp::buildServoBus() ),
     #ifndef ROFI_HAL_NO_MOTORS
         _joints( {
@@ -922,6 +921,7 @@ public:
         } )
     {
         esp::EspNvs::initNvs();
+        _nvs = esp::EspNvs::open("rofi");
     } catch ( const std::runtime_error& e ) {
         throw std::runtime_error( "Cannot intialize local RoFI Driver: "s + e.what() );
     }

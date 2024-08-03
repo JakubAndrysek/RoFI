@@ -122,6 +122,20 @@ esp::EspNvs::DataType esp::EspNvs::getType(const std::string& name) {
     return typ;
 }
 
+std::vector<std::string> esp::EspNvs::listKeys() {
+    std::vector<std::string> keys;
+    nvs_iterator_t it = NULL;
+    esp_err_t res = nvs_entry_find(NVS_DEFAULT_PART_NAME, _nsname.c_str(), NVS_TYPE_ANY, &it);
+    while(res == ESP_OK) {
+        nvs_entry_info_t info;
+        nvs_entry_info(it, &info);
+        keys.push_back(info.key);
+        res = nvs_entry_next(&it);
+    }
+    nvs_release_iterator(it);
+    return keys;
+}
+
 bool esp::EspNvs::commit() {
     auto res = nvs_commit(_handle);
     if(res != ESP_OK) {
