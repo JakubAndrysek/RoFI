@@ -43,10 +43,14 @@ class ConnectorEvent(betterproto.Enum):
     POWER_CHANGED = 2
 
 
+class RofiStateType(betterproto.Enum):
+    STATE_SUCCESS = 0
+    STATE_ERROR = 1
+
+
 class DeviceCommandType(betterproto.Enum):
     REBOOT = 0
     SET_ID = 1
-    SET_RANDOM_NUMBER = 2
 
 
 class JointCommandType(betterproto.Enum):
@@ -56,16 +60,18 @@ class JointCommandType(betterproto.Enum):
 
 
 class ConnectorCommandType(betterproto.Enum):
-    SET_POSITION = 0
-    CONNECT_POWER = 1
-    DISCONNECT_POWER = 2
-    SET_DISTANCE_MODE = 3
+    SET_CONNECT = 0
+    SET_DISCONNECT = 1
+    CONNECT_POWER = 2
+    DISCONNECT_POWER = 3
+    SET_DISTANCE_MODE = 4
 
 
 class CommandTypeRequest(betterproto.Enum):
-    DEVICE = 0
-    JOINT = 1
-    CONNECTOR = 2
+    MESSAGE = 0
+    DEVICE = 1
+    JOINT = 2
+    CONNECTOR = 3
 
 
 @dataclass
@@ -104,24 +110,30 @@ class Connector(betterproto.Message):
     external_voltage: float = betterproto.float_field(9)
     external_current: float = betterproto.float_field(10)
     lidar_status: "LidarStatus" = betterproto.enum_field(11)
-    distance: float = betterproto.float_field(12)
+    distance: int = betterproto.uint32_field(12)
+
+
+@dataclass
+class RofiStateData(betterproto.Message):
+    random_number: int = betterproto.int32_field(1)
+    descriptor: "Descriptor" = betterproto.message_field(2)
+    joints: List["Joint"] = betterproto.message_field(3)
+    connectors: List["Connector"] = betterproto.message_field(4)
 
 
 @dataclass
 class RofiState(betterproto.Message):
     packet_id: int = betterproto.uint32_field(1)
     rofi_id: int = betterproto.int32_field(2)
-    random_number: int = betterproto.int32_field(3)
-    descriptor: "Descriptor" = betterproto.message_field(4)
-    joints: List["Joint"] = betterproto.message_field(5)
-    connectors: List["Connector"] = betterproto.message_field(6)
+    type: "RofiStateType" = betterproto.enum_field(3)
+    state_data: "RofiStateData" = betterproto.message_field(4, group="state_type")
+    error_message: str = betterproto.string_field(5, group="state_type")
 
 
 @dataclass
 class DeviceCommand(betterproto.Message):
     command: "DeviceCommandType" = betterproto.enum_field(1)
     set_id: int = betterproto.int32_field(2, group="command_type")
-    set_random_number: int = betterproto.int32_field(3, group="command_type")
 
 
 @dataclass
@@ -145,12 +157,16 @@ class JointCommand(betterproto.Message):
 class ConnectorCommand(betterproto.Message):
     connector_id: int = betterproto.uint32_field(1)
     command: "ConnectorCommandType" = betterproto.enum_field(2)
-    set_position: "ConnectorPosition" = betterproto.enum_field(3, group="command_type")
-    connect_power: "ConnectorLine" = betterproto.enum_field(4, group="command_type")
-    disconnect_power: "ConnectorLine" = betterproto.enum_field(5, group="command_type")
+    connect_power: "ConnectorLine" = betterproto.enum_field(3, group="command_type")
+    disconnect_power: "ConnectorLine" = betterproto.enum_field(4, group="command_type")
     set_distance_mode: "LidarDistanceMode" = betterproto.enum_field(
-        6, group="command_type"
+        5, group="command_type"
     )
+
+
+@dataclass
+class Message(betterproto.Message):
+    message: str = betterproto.string_field(1)
 
 
 @dataclass
@@ -158,11 +174,11 @@ class RofiRequest(betterproto.Message):
     """Request is sent from the client to the RoFI"""
 
     packet_id: int = betterproto.int32_field(1)
-    rofi_id: int = betterproto.int32_field(2)
     command: "CommandTypeRequest" = betterproto.enum_field(3)
-    device: "DeviceCommand" = betterproto.message_field(4, group="command_type")
-    joint: "JointCommand" = betterproto.message_field(5, group="command_type")
-    connector: "ConnectorCommand" = betterproto.message_field(6, group="command_type")
+    message: "Message" = betterproto.message_field(4, group="command_type")
+    device: "DeviceCommand" = betterproto.message_field(5, group="command_type")
+    joint: "JointCommand" = betterproto.message_field(6, group="command_type")
+    connector: "ConnectorCommand" = betterproto.message_field(7, group="command_type")
 
 
 @dataclass
@@ -170,6 +186,5 @@ class RofiResponse(betterproto.Message):
     """Response is sent from the RoFI to the client"""
 
     packet_id: int = betterproto.int32_field(1)
-    rofi_id: int = betterproto.int32_field(2)
     success: int = betterproto.int32_field(3)
     message: str = betterproto.string_field(4)

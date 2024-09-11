@@ -13,7 +13,6 @@ namespace rofi::nimble {
 
 class NimBleRofi {
 private:
-
   enum NimBleState {
     UNSUBSCRIBED = 0,
     NOTIFICATION_ENABLED = 1,
@@ -50,6 +49,7 @@ public:
   void start();
   void stop();
   void updateRofiState();
+  void updateRofiStateError(uint32_t &packet_id, std::string error_message);
 
   void connectionUpdate(bool connected);
   void subscribeRofiStateUpdate(uint16_t subValue);

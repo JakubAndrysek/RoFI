@@ -4,10 +4,10 @@
 #include "NimBLELog.h"
 #include "nimBleCodec.hpp"
 // #include "nimBleRofi.hpp"
-#include <optional>
 #include <functional>
+#include <optional>
 
-#define TAG "NIMBLE_CHARACTERISTIC"
+#define TAG_C "NIMBLE_CHARACTERISTIC"
 
 namespace rofi::nimble {
 
@@ -18,7 +18,6 @@ namespace rofi::nimble {
  */
 class RofiServerCallbacks : public NimBLEServerCallbacks {
 private:
-
   NimBLEServer *_pServer;
 
   // void (*_connectionUpdate)(bool);
@@ -38,9 +37,8 @@ private:
   void onAuthenticationComplete(const NimBLEConnInfo &connInfo);
 
 public:
-  RofiServerCallbacks(
-    const std::function<void(bool)> &cb,
-    NimBLEServer *pServer);
+  RofiServerCallbacks(const std::function<void(bool)> &cb,
+                      NimBLEServer *pServer);
 };
 
 /**

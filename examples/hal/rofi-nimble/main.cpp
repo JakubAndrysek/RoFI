@@ -6,8 +6,8 @@ void app_main(void);
 }
 
 void app_main(void) {
-  printf("Starting RoFI NimBLE Server\n");
   rofi::hal::RoFI localRoFI = rofi::hal::RoFI::getLocalRoFI();
+  printf("Starting RoFI NimBLE Server - RoFI ID: %d\n", localRoFI.getId());
 
   // NimBleRofi
   rofi::nimble::NimBleRofi nimBleRofi = rofi::nimble::NimBleRofi(localRoFI);

@@ -140,8 +140,6 @@ add_application(examples/hal/connectorMovementHal)
 add_application(examples/hal/connectorHalStatus)
 add_application(examples/hal/firmwareUpdater)
 add_application(examples/hal/rofi-nimble)
-add_application(examples/hal/rofi-nimble-basic)
-add_application(examples/hal/rofi-nimble-protobf)
 
 
 

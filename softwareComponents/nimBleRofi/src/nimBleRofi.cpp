@@ -3,6 +3,8 @@
 #include "nimBleCodec.hpp"
 #include "pb_decode.h"
 #include "pb_encode.h"
+#include "utils.hpp"
+#include <string.h>
 
 namespace rofi::nimble {
 
@@ -22,17 +24,28 @@ NimBleRofi::NimBleRofi(rofi::hal::RoFI localRoFI)
 NimBleRofi::~NimBleRofi() { stop(); }
 
 void NimBleRofi::start() {
-  NimBLEDevice::init("RoFI-" + std::to_string(_localRoFI->getId()));
+  const int id = _localRoFI->getId();
+  std::string mac = getMACAddress();
+  std::string deviceName;
+
+  deviceName = "RoFI-" + std::to_string(id);
+
+  // if (id == 0) {
+  //   deviceName = "RoFI-" + mac;
+  // } else {
+  //   deviceName = "RoFI-" + std::to_string(id);
+  // }
+
+  NimBLEDevice::init(deviceName);
+  ESP_LOGI(TAG, "NimBLEDevice initialized: %s", deviceName.c_str());
 
   _pServer = NimBLEDevice::createServer();
-  // _pServer->setCallbacks(new ServerCallbacks(_pServer));
   _pServer->setCallbacks(&_rofiServerCallbacks);
 
   _pService = _pServer->createService("A0F1");
 
   _pCharacRofiState = _pService->createCharacteristic(
-      "D0F1",
-      NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::NOTIFY);
+      "D0F1", NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::NOTIFY);
 
   _pCharacRofiState->setCallbacks(&_chrCallbacksRofiState);
 
@@ -49,7 +62,7 @@ void NimBleRofi::start() {
   _pAdvertising->start();
 
   _stopTask = false;
-  xTaskCreate(NimBleRofi::notificatonTask, "notificationTask", 4096, this, 5,
+  xTaskCreate(NimBleRofi::notificatonTask, "notificationTask", 8192, this, 5,
               &_notificationTaskHandle);
 
   ESP_LOGI(TAG, "Advertising started!");
@@ -61,9 +74,10 @@ void NimBleRofi::notificatonTask(void *parameter) {
   // Start the task loop
   while (!nimBleRofi->_stopTask) {
     // Run if the device is connected
-    if (nimBleRofi->_deviceConnected && nimBleRofi->_rofiState == NOTIFICATION_ENABLED) {
+    if (nimBleRofi->_deviceConnected &&
+        nimBleRofi->_rofiState == NOTIFICATION_ENABLED) {
       nimBleRofi->updateRofiState();
-      vTaskDelay(2000 / portTICK_PERIOD_MS);
+      vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
 
     // Disconnecting
@@ -100,21 +114,47 @@ void NimBleRofi::stop() {
 }
 
 void NimBleRofi::updateRofiState() {
-  static uint32_t packet_id = 0;
-  uint8_t buffer[128];
-  size_t message_length =
-      _nimBleCodec.encodeRofiState(buffer, sizeof(buffer), packet_id++,
-                                   _localRoFI->getId(), esp_random() % 100);
+  static uint32_t packet_id = 1;
+  uint8_t buffer[400];
 
-  if (message_length == 0) {
-    ESP_LOGE(TAG, "Failed to encode sensor data");
-    return;
+  try {
+    size_t message_length =
+        _nimBleCodec.encodeRofiState(buffer, sizeof(buffer), packet_id);
+    if (message_length == 0) {
+      throw std::runtime_error(
+          "Encoding RofiState message failed - message_length == 0");
+    }
+
+    packet_id++;
+    _pCharacRofiState->setValue((uint8_t *)buffer, message_length);
+    _pCharacRofiState->notify();
+  } catch (const std::runtime_error &e) {
+    updateRofiStateError(packet_id, e.what());
+  }
+}
+
+void NimBleRofi::updateRofiStateError(uint32_t &packet_id,
+                                      std::string error_message) {
+  uint8_t buffer_error[400];
+  ESP_LOGE(TAG, "%s", error_message.c_str());
+
+  size_t message_length_err = 0;
+  try {
+    message_length_err = _nimBleCodec.encodeRofiStateError(
+        buffer_error, sizeof(buffer_error), packet_id, error_message);
+
+    if (message_length_err == 0) {
+      throw std::runtime_error("Encoding RofiStateError message failed");
+    }
+  } catch (const std::runtime_error &e) {
+    std::string error_message = e.what();
+    ESP_LOGE(TAG, "%s", error_message.c_str());
+    throw e;
   }
 
-  _pCharacRofiState->setValue((uint8_t *)buffer, message_length);
+  packet_id++;
+  _pCharacRofiState->setValue((uint8_t *)buffer_error, message_length_err);
   _pCharacRofiState->notify();
-
-  // ESP_LOGI(TAG, "RoFI state updated");
 }
 
 void NimBleRofi::connectionUpdate(bool connected) {

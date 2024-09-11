@@ -46,10 +46,14 @@ typedef enum _ConnectorEvent {
     ConnectorEvent_POWER_CHANGED = 2
 } ConnectorEvent;
 
+typedef enum _RofiStateType {
+    RofiStateType_STATE_SUCCESS = 0,
+    RofiStateType_STATE_ERROR = 1
+} RofiStateType;
+
 typedef enum _DeviceCommandType {
     DeviceCommandType_REBOOT = 0,
-    DeviceCommandType_SET_ID = 1,
-    DeviceCommandType_SET_RANDOM_NUMBER = 2
+    DeviceCommandType_SET_ID = 1
 } DeviceCommandType;
 
 typedef enum _JointCommandType {
@@ -59,16 +63,18 @@ typedef enum _JointCommandType {
 } JointCommandType;
 
 typedef enum _ConnectorCommandType {
-    ConnectorCommandType_SET_POSITION = 0,
-    ConnectorCommandType_CONNECT_POWER = 1,
-    ConnectorCommandType_DISCONNECT_POWER = 2,
-    ConnectorCommandType_SET_DISTANCE_MODE = 3
+    ConnectorCommandType_SET_CONNECT = 0,
+    ConnectorCommandType_SET_DISCONNECT = 1,
+    ConnectorCommandType_CONNECT_POWER = 2,
+    ConnectorCommandType_DISCONNECT_POWER = 3,
+    ConnectorCommandType_SET_DISTANCE_MODE = 4
 } ConnectorCommandType;
 
 typedef enum _CommandTypeRequest {
-    CommandTypeRequest_DEVICE = 0,
-    CommandTypeRequest_JOINT = 1,
-    CommandTypeRequest_CONNECTOR = 2
+    CommandTypeRequest_MESSAGE = 0,
+    CommandTypeRequest_DEVICE = 1,
+    CommandTypeRequest_JOINT = 2,
+    CommandTypeRequest_CONNECTOR = 3
 } CommandTypeRequest;
 
 /* Struct definitions */
@@ -104,17 +110,26 @@ typedef struct _Connector {
     float external_voltage;
     float external_current;
     LidarStatus lidar_status;
-    float distance;
+    uint32_t distance;
 } Connector;
 
-typedef struct _RofiState {
-    uint32_t packet_id;
-    int32_t rofi_id;
+typedef struct _RofiStateData {
     int32_t random_number;
     bool has_descriptor;
     Descriptor descriptor;
     pb_callback_t joints;
     pb_callback_t connectors;
+} RofiStateData;
+
+typedef struct _RofiState {
+    uint32_t packet_id;
+    int32_t rofi_id;
+    RofiStateType type;
+    pb_size_t which_state_type;
+    union {
+        RofiStateData state_data;
+        pb_callback_t error_message;
+    } state_type;
 } RofiState;
 
 typedef struct _DeviceCommand {
@@ -122,7 +137,6 @@ typedef struct _DeviceCommand {
     pb_size_t which_command_type;
     union {
         int32_t set_id;
-        int32_t set_random_number;
     } command_type;
 } DeviceCommand;
 
@@ -147,20 +161,23 @@ typedef struct _ConnectorCommand {
     ConnectorCommandType command;
     pb_size_t which_command_type;
     union {
-        ConnectorPosition set_position;
         ConnectorLine connect_power;
         ConnectorLine disconnect_power;
         LidarDistanceMode set_distance_mode;
     } command_type;
 } ConnectorCommand;
 
+typedef struct _Message {
+    pb_callback_t message;
+} Message;
+
 /* Request is sent from the client to the RoFI */
 typedef struct _RofiRequest {
     int32_t packet_id;
-    int32_t rofi_id;
     CommandTypeRequest command;
     pb_size_t which_command_type;
     union {
+        Message message;
         DeviceCommand device;
         JointCommand joint;
         ConnectorCommand connector;
@@ -170,7 +187,6 @@ typedef struct _RofiRequest {
 /* Response is sent from the RoFI to the client */
 typedef struct _RofiResponse {
     int32_t packet_id;
-    int32_t rofi_id;
     int32_t success;
     pb_callback_t message;
 } RofiResponse;
@@ -205,19 +221,23 @@ extern "C" {
 #define _ConnectorEvent_MAX ConnectorEvent_POWER_CHANGED
 #define _ConnectorEvent_ARRAYSIZE ((ConnectorEvent)(ConnectorEvent_POWER_CHANGED+1))
 
+#define _RofiStateType_MIN RofiStateType_STATE_SUCCESS
+#define _RofiStateType_MAX RofiStateType_STATE_ERROR
+#define _RofiStateType_ARRAYSIZE ((RofiStateType)(RofiStateType_STATE_ERROR+1))
+
 #define _DeviceCommandType_MIN DeviceCommandType_REBOOT
-#define _DeviceCommandType_MAX DeviceCommandType_SET_RANDOM_NUMBER
-#define _DeviceCommandType_ARRAYSIZE ((DeviceCommandType)(DeviceCommandType_SET_RANDOM_NUMBER+1))
+#define _DeviceCommandType_MAX DeviceCommandType_SET_ID
+#define _DeviceCommandType_ARRAYSIZE ((DeviceCommandType)(DeviceCommandType_SET_ID+1))
 
 #define _JointCommandType_MIN JointCommandType_SET_JOINT_VELOCITY
 #define _JointCommandType_MAX JointCommandType_SET_JOINT_TORQUE
 #define _JointCommandType_ARRAYSIZE ((JointCommandType)(JointCommandType_SET_JOINT_TORQUE+1))
 
-#define _ConnectorCommandType_MIN ConnectorCommandType_SET_POSITION
+#define _ConnectorCommandType_MIN ConnectorCommandType_SET_CONNECT
 #define _ConnectorCommandType_MAX ConnectorCommandType_SET_DISTANCE_MODE
 #define _ConnectorCommandType_ARRAYSIZE ((ConnectorCommandType)(ConnectorCommandType_SET_DISTANCE_MODE+1))
 
-#define _CommandTypeRequest_MIN CommandTypeRequest_DEVICE
+#define _CommandTypeRequest_MIN CommandTypeRequest_MESSAGE
 #define _CommandTypeRequest_MAX CommandTypeRequest_CONNECTOR
 #define _CommandTypeRequest_ARRAYSIZE ((CommandTypeRequest)(CommandTypeRequest_CONNECTOR+1))
 
@@ -230,16 +250,18 @@ extern "C" {
 #define Connector_lidar_status_ENUMTYPE LidarStatus
 
 
+#define RofiState_type_ENUMTYPE RofiStateType
+
 #define DeviceCommand_command_ENUMTYPE DeviceCommandType
 
 
 #define JointCommand_command_ENUMTYPE JointCommandType
 
 #define ConnectorCommand_command_ENUMTYPE ConnectorCommandType
-#define ConnectorCommand_command_type_set_position_ENUMTYPE ConnectorPosition
 #define ConnectorCommand_command_type_connect_power_ENUMTYPE ConnectorLine
 #define ConnectorCommand_command_type_disconnect_power_ENUMTYPE ConnectorLine
 #define ConnectorCommand_command_type_set_distance_mode_ENUMTYPE LidarDistanceMode
+
 
 #define RofiRequest_command_ENUMTYPE CommandTypeRequest
 
@@ -250,24 +272,28 @@ extern "C" {
 #define Descriptor_init_default                  {0, 0}
 #define Joint_init_default                       {0, 0, 0, 0, 0, 0, 0, 0}
 #define Connector_init_default                   {_ConnectorPosition_MIN, 0, 0, _LidarDistanceMode_MIN, 0, _ConnectorOrientation_MIN, 0, 0, 0, 0, _LidarStatus_MIN, 0}
-#define RofiState_init_default                   {0, 0, 0, false, Descriptor_init_default, {{NULL}, NULL}, {{NULL}, NULL}}
+#define RofiStateData_init_default               {0, false, Descriptor_init_default, {{NULL}, NULL}, {{NULL}, NULL}}
+#define RofiState_init_default                   {0, 0, _RofiStateType_MIN, 0, {RofiStateData_init_default}}
 #define DeviceCommand_init_default               {_DeviceCommandType_MIN, 0, {0}}
 #define JointSetPosition_init_default            {0, 0}
 #define JointCommand_init_default                {0, _JointCommandType_MIN, 0, {0}}
-#define ConnectorCommand_init_default            {0, _ConnectorCommandType_MIN, 0, {_ConnectorPosition_MIN}}
-#define RofiRequest_init_default                 {0, 0, _CommandTypeRequest_MIN, 0, {DeviceCommand_init_default}}
-#define RofiResponse_init_default                {0, 0, 0, {{NULL}, NULL}}
+#define ConnectorCommand_init_default            {0, _ConnectorCommandType_MIN, 0, {_ConnectorLine_MIN}}
+#define Message_init_default                     {{{NULL}, NULL}}
+#define RofiRequest_init_default                 {0, _CommandTypeRequest_MIN, 0, {Message_init_default}}
+#define RofiResponse_init_default                {0, 0, {{NULL}, NULL}}
 #define Empty_init_zero                          {0}
 #define Descriptor_init_zero                     {0, 0}
 #define Joint_init_zero                          {0, 0, 0, 0, 0, 0, 0, 0}
 #define Connector_init_zero                      {_ConnectorPosition_MIN, 0, 0, _LidarDistanceMode_MIN, 0, _ConnectorOrientation_MIN, 0, 0, 0, 0, _LidarStatus_MIN, 0}
-#define RofiState_init_zero                      {0, 0, 0, false, Descriptor_init_zero, {{NULL}, NULL}, {{NULL}, NULL}}
+#define RofiStateData_init_zero                  {0, false, Descriptor_init_zero, {{NULL}, NULL}, {{NULL}, NULL}}
+#define RofiState_init_zero                      {0, 0, _RofiStateType_MIN, 0, {RofiStateData_init_zero}}
 #define DeviceCommand_init_zero                  {_DeviceCommandType_MIN, 0, {0}}
 #define JointSetPosition_init_zero               {0, 0}
 #define JointCommand_init_zero                   {0, _JointCommandType_MIN, 0, {0}}
-#define ConnectorCommand_init_zero               {0, _ConnectorCommandType_MIN, 0, {_ConnectorPosition_MIN}}
-#define RofiRequest_init_zero                    {0, 0, _CommandTypeRequest_MIN, 0, {DeviceCommand_init_zero}}
-#define RofiResponse_init_zero                   {0, 0, 0, {{NULL}, NULL}}
+#define ConnectorCommand_init_zero               {0, _ConnectorCommandType_MIN, 0, {_ConnectorLine_MIN}}
+#define Message_init_zero                        {{{NULL}, NULL}}
+#define RofiRequest_init_zero                    {0, _CommandTypeRequest_MIN, 0, {Message_init_zero}}
+#define RofiResponse_init_zero                   {0, 0, {{NULL}, NULL}}
 
 /* Field tags (for use in manual encoding/decoding) */
 #define Descriptor_count_joint_tag               1
@@ -292,15 +318,17 @@ extern "C" {
 #define Connector_external_current_tag           10
 #define Connector_lidar_status_tag               11
 #define Connector_distance_tag                   12
+#define RofiStateData_random_number_tag          1
+#define RofiStateData_descriptor_tag             2
+#define RofiStateData_joints_tag                 3
+#define RofiStateData_connectors_tag             4
 #define RofiState_packet_id_tag                  1
 #define RofiState_rofi_id_tag                    2
-#define RofiState_random_number_tag              3
-#define RofiState_descriptor_tag                 4
-#define RofiState_joints_tag                     5
-#define RofiState_connectors_tag                 6
+#define RofiState_type_tag                       3
+#define RofiState_state_data_tag                 4
+#define RofiState_error_message_tag              5
 #define DeviceCommand_command_tag                1
 #define DeviceCommand_set_id_tag                 2
-#define DeviceCommand_set_random_number_tag      3
 #define JointSetPosition_position_tag            1
 #define JointSetPosition_velocity_tag            2
 #define JointCommand_joint_id_tag                1
@@ -310,18 +338,17 @@ extern "C" {
 #define JointCommand_set_torque_tag              5
 #define ConnectorCommand_connector_id_tag        1
 #define ConnectorCommand_command_tag             2
-#define ConnectorCommand_set_position_tag        3
-#define ConnectorCommand_connect_power_tag       4
-#define ConnectorCommand_disconnect_power_tag    5
-#define ConnectorCommand_set_distance_mode_tag   6
+#define ConnectorCommand_connect_power_tag       3
+#define ConnectorCommand_disconnect_power_tag    4
+#define ConnectorCommand_set_distance_mode_tag   5
+#define Message_message_tag                      1
 #define RofiRequest_packet_id_tag                1
-#define RofiRequest_rofi_id_tag                  2
 #define RofiRequest_command_tag                  3
-#define RofiRequest_device_tag                   4
-#define RofiRequest_joint_tag                    5
-#define RofiRequest_connector_tag                6
+#define RofiRequest_message_tag                  4
+#define RofiRequest_device_tag                   5
+#define RofiRequest_joint_tag                    6
+#define RofiRequest_connector_tag                7
 #define RofiResponse_packet_id_tag               1
-#define RofiResponse_rofi_id_tag                 2
 #define RofiResponse_success_tag                 3
 #define RofiResponse_message_tag                 4
 
@@ -361,27 +388,34 @@ X(a, STATIC,   SINGULAR, FLOAT,    internal_current,   8) \
 X(a, STATIC,   SINGULAR, FLOAT,    external_voltage,   9) \
 X(a, STATIC,   SINGULAR, FLOAT,    external_current,  10) \
 X(a, STATIC,   SINGULAR, UENUM,    lidar_status,     11) \
-X(a, STATIC,   SINGULAR, FLOAT,    distance,         12)
+X(a, STATIC,   SINGULAR, UINT32,   distance,         12)
 #define Connector_CALLBACK NULL
 #define Connector_DEFAULT NULL
+
+#define RofiStateData_FIELDLIST(X, a) \
+X(a, STATIC,   SINGULAR, INT32,    random_number,     1) \
+X(a, STATIC,   OPTIONAL, MESSAGE,  descriptor,        2) \
+X(a, CALLBACK, REPEATED, MESSAGE,  joints,            3) \
+X(a, CALLBACK, REPEATED, MESSAGE,  connectors,        4)
+#define RofiStateData_CALLBACK pb_default_field_callback
+#define RofiStateData_DEFAULT NULL
+#define RofiStateData_descriptor_MSGTYPE Descriptor
+#define RofiStateData_joints_MSGTYPE Joint
+#define RofiStateData_connectors_MSGTYPE Connector
 
 #define RofiState_FIELDLIST(X, a) \
 X(a, STATIC,   SINGULAR, UINT32,   packet_id,         1) \
 X(a, STATIC,   SINGULAR, INT32,    rofi_id,           2) \
-X(a, STATIC,   SINGULAR, INT32,    random_number,     3) \
-X(a, STATIC,   OPTIONAL, MESSAGE,  descriptor,        4) \
-X(a, CALLBACK, REPEATED, MESSAGE,  joints,            5) \
-X(a, CALLBACK, REPEATED, MESSAGE,  connectors,        6)
+X(a, STATIC,   SINGULAR, UENUM,    type,              3) \
+X(a, STATIC,   ONEOF,    MESSAGE,  (state_type,state_data,state_type.state_data),   4) \
+X(a, CALLBACK, ONEOF,    STRING,   (state_type,error_message,state_type.error_message),   5)
 #define RofiState_CALLBACK pb_default_field_callback
 #define RofiState_DEFAULT NULL
-#define RofiState_descriptor_MSGTYPE Descriptor
-#define RofiState_joints_MSGTYPE Joint
-#define RofiState_connectors_MSGTYPE Connector
+#define RofiState_state_type_state_data_MSGTYPE RofiStateData
 
 #define DeviceCommand_FIELDLIST(X, a) \
 X(a, STATIC,   SINGULAR, UENUM,    command,           1) \
-X(a, STATIC,   ONEOF,    INT32,    (command_type,set_id,command_type.set_id),   2) \
-X(a, STATIC,   ONEOF,    INT32,    (command_type,set_random_number,command_type.set_random_number),   3)
+X(a, STATIC,   ONEOF,    INT32,    (command_type,set_id,command_type.set_id),   2)
 #define DeviceCommand_CALLBACK NULL
 #define DeviceCommand_DEFAULT NULL
 
@@ -404,29 +438,33 @@ X(a, STATIC,   ONEOF,    FLOAT,    (command_type,set_torque,command_type.set_tor
 #define ConnectorCommand_FIELDLIST(X, a) \
 X(a, STATIC,   SINGULAR, UINT32,   connector_id,      1) \
 X(a, STATIC,   SINGULAR, UENUM,    command,           2) \
-X(a, STATIC,   ONEOF,    UENUM,    (command_type,set_position,command_type.set_position),   3) \
-X(a, STATIC,   ONEOF,    UENUM,    (command_type,connect_power,command_type.connect_power),   4) \
-X(a, STATIC,   ONEOF,    UENUM,    (command_type,disconnect_power,command_type.disconnect_power),   5) \
-X(a, STATIC,   ONEOF,    UENUM,    (command_type,set_distance_mode,command_type.set_distance_mode),   6)
+X(a, STATIC,   ONEOF,    UENUM,    (command_type,connect_power,command_type.connect_power),   3) \
+X(a, STATIC,   ONEOF,    UENUM,    (command_type,disconnect_power,command_type.disconnect_power),   4) \
+X(a, STATIC,   ONEOF,    UENUM,    (command_type,set_distance_mode,command_type.set_distance_mode),   5)
 #define ConnectorCommand_CALLBACK NULL
 #define ConnectorCommand_DEFAULT NULL
 
+#define Message_FIELDLIST(X, a) \
+X(a, CALLBACK, SINGULAR, STRING,   message,           1)
+#define Message_CALLBACK pb_default_field_callback
+#define Message_DEFAULT NULL
+
 #define RofiRequest_FIELDLIST(X, a) \
 X(a, STATIC,   SINGULAR, INT32,    packet_id,         1) \
-X(a, STATIC,   SINGULAR, INT32,    rofi_id,           2) \
 X(a, STATIC,   SINGULAR, UENUM,    command,           3) \
-X(a, STATIC,   ONEOF,    MESSAGE,  (command_type,device,command_type.device),   4) \
-X(a, STATIC,   ONEOF,    MESSAGE,  (command_type,joint,command_type.joint),   5) \
-X(a, STATIC,   ONEOF,    MESSAGE,  (command_type,connector,command_type.connector),   6)
+X(a, STATIC,   ONEOF,    MESSAGE,  (command_type,message,command_type.message),   4) \
+X(a, STATIC,   ONEOF,    MESSAGE,  (command_type,device,command_type.device),   5) \
+X(a, STATIC,   ONEOF,    MESSAGE,  (command_type,joint,command_type.joint),   6) \
+X(a, STATIC,   ONEOF,    MESSAGE,  (command_type,connector,command_type.connector),   7)
 #define RofiRequest_CALLBACK NULL
 #define RofiRequest_DEFAULT NULL
+#define RofiRequest_command_type_message_MSGTYPE Message
 #define RofiRequest_command_type_device_MSGTYPE DeviceCommand
 #define RofiRequest_command_type_joint_MSGTYPE JointCommand
 #define RofiRequest_command_type_connector_MSGTYPE ConnectorCommand
 
 #define RofiResponse_FIELDLIST(X, a) \
 X(a, STATIC,   SINGULAR, INT32,    packet_id,         1) \
-X(a, STATIC,   SINGULAR, INT32,    rofi_id,           2) \
 X(a, STATIC,   SINGULAR, INT32,    success,           3) \
 X(a, CALLBACK, SINGULAR, STRING,   message,           4)
 #define RofiResponse_CALLBACK pb_default_field_callback
@@ -436,11 +474,13 @@ extern const pb_msgdesc_t Empty_msg;
 extern const pb_msgdesc_t Descriptor_msg;
 extern const pb_msgdesc_t Joint_msg;
 extern const pb_msgdesc_t Connector_msg;
+extern const pb_msgdesc_t RofiStateData_msg;
 extern const pb_msgdesc_t RofiState_msg;
 extern const pb_msgdesc_t DeviceCommand_msg;
 extern const pb_msgdesc_t JointSetPosition_msg;
 extern const pb_msgdesc_t JointCommand_msg;
 extern const pb_msgdesc_t ConnectorCommand_msg;
+extern const pb_msgdesc_t Message_msg;
 extern const pb_msgdesc_t RofiRequest_msg;
 extern const pb_msgdesc_t RofiResponse_msg;
 
@@ -449,27 +489,31 @@ extern const pb_msgdesc_t RofiResponse_msg;
 #define Descriptor_fields &Descriptor_msg
 #define Joint_fields &Joint_msg
 #define Connector_fields &Connector_msg
+#define RofiStateData_fields &RofiStateData_msg
 #define RofiState_fields &RofiState_msg
 #define DeviceCommand_fields &DeviceCommand_msg
 #define JointSetPosition_fields &JointSetPosition_msg
 #define JointCommand_fields &JointCommand_msg
 #define ConnectorCommand_fields &ConnectorCommand_msg
+#define Message_fields &Message_msg
 #define RofiRequest_fields &RofiRequest_msg
 #define RofiResponse_fields &RofiResponse_msg
 
 /* Maximum encoded size of messages (where known) */
+/* RofiStateData_size depends on runtime parameters */
 /* RofiState_size depends on runtime parameters */
+/* Message_size depends on runtime parameters */
+/* RofiRequest_size depends on runtime parameters */
 /* RofiResponse_size depends on runtime parameters */
 #define ConnectorCommand_size                    10
-#define Connector_size                           39
+#define Connector_size                           40
 #define Descriptor_size                          12
 #define DeviceCommand_size                       13
 #define Empty_size                               0
 #define JointCommand_size                        20
 #define JointSetPosition_size                    10
 #define Joint_size                               40
-#define ROFI_PB_H_MAX_SIZE                       RofiRequest_size
-#define RofiRequest_size                         46
+#define ROFI_PB_H_MAX_SIZE                       Joint_size
 
 #ifdef __cplusplus
 } /* extern "C" */

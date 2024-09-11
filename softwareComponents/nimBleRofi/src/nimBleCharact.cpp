@@ -1,4 +1,5 @@
 #include "nimBleCharact.hpp"
+#include <iostream>
 
 // Callbacks for the NimBLEServer.
 //////////////////////////////////////////
@@ -12,7 +13,8 @@ RofiServerCallbacks::RofiServerCallbacks(const std::function<void(bool)> &cb,
 
 void RofiServerCallbacks::onConnect(NimBLEServer *pServer,
                                     NimBLEConnInfo &connInfo) {
-  printf("Client address: %s\n", connInfo.getAddress().toString().c_str());
+  ESP_LOGI(TAG_C, "Client address: %s\n",
+           connInfo.getAddress().toString().c_str());
 
   _connectionUpdate(true);
 
@@ -28,22 +30,22 @@ void RofiServerCallbacks::onConnect(NimBLEServer *pServer,
 
 void RofiServerCallbacks::onDisconnect(NimBLEServer *pServer,
                                        NimBLEConnInfo &connInfo, int reason) {
-  printf("Client disconnected - start advertising\n");
+  ESP_LOGI(TAG_C, "Client disconnected - start advertising");
   _connectionUpdate(false);
 
   NimBLEDevice::startAdvertising();
 };
 
 void RofiServerCallbacks::onMTUChange(uint16_t MTU, NimBLEConnInfo &connInfo) {
-  printf("MTU updated: %u for connection ID: %u\n", MTU,
-         connInfo.getConnHandle());
+  ESP_LOGI(TAG_C, "MTU updated: %u for connection ID: %u", MTU,
+           connInfo.getConnHandle());
   _pServer->updateConnParams(connInfo.getConnHandle(), 24, 48, 0, 60);
 };
 
 /********************* Security handled here **********************
 ****** Note: these are the same return values as defaults ********/
 uint32_t RofiServerCallbacks::onPassKeyDisplay() {
-  printf("Server Passkey Display\n");
+  ESP_LOGI(TAG_C, "Server Passkey Display");
   /** This should return a random 6 digit number for security
    *  or make your own static passkey as done here.
    */
@@ -52,7 +54,7 @@ uint32_t RofiServerCallbacks::onPassKeyDisplay() {
 
 void RofiServerCallbacks::onConfirmPIN(const NimBLEConnInfo &connInfo,
                                        uint32_t pass_key) {
-  printf("The passkey YES/NO number: %" PRIu32 "\n", pass_key);
+  ESP_LOGI(TAG_C, "The passkey YES/NO number: %u", pass_key);
   /** Inject false if passkeys don't match. */
   NimBLEDevice::injectConfirmPIN(connInfo, true);
 };
@@ -79,22 +81,32 @@ CharactCallbacksRofiState::CharactCallbacksRofiState(
 
 void CharactCallbacksRofiState::onRead(NimBLECharacteristic *pCharacRofiState,
                                        NimBLEConnInfo &connInfo) {
-  printf("%s : onRead(), value: %s\n",
-         pCharacRofiState->getUUID().toString().c_str(),
-         pCharacRofiState->getValue().c_str());
+  ESP_LOGD(TAG_C, "onRead() - RoFI State");
+
+  static uint32_t packet_id = 1;
+  uint8_t buffer[800];
+
+  try {
+    size_t message_length =
+        _nimBleCodec.encodeRofiState(buffer, sizeof(buffer), packet_id);
+
+    if (message_length == 0) {
+      ESP_LOGE(TAG_C, "Encoding RofiState - onRead() message failed");
+    }
+
+    packet_id++;
+    pCharacRofiState->setValue((uint8_t *)buffer, message_length);
+    pCharacRofiState->notify();
+  } catch (const std::runtime_error &e) {
+    ESP_LOGE(TAG_C, "Encoding RofiState - onRead() message failed");
+    return;
+  }
 }
 
 void CharactCallbacksRofiState::onWrite(NimBLECharacteristic *pCharacRofiState,
                                         NimBLEConnInfo &connInfo) {
-  printf("%s : onWrite(), value: %s\n",
-         pCharacRofiState->getUUID().toString().c_str(),
-         pCharacRofiState->getValue().c_str());
-
-  printf("Characteristic written\n");
-  ESP_LOGI(TAG, "Characteristic written");
-  std::string value = pCharacRofiState->getValue();
-  ESP_LOGI(TAG, "Data received: %s", value.c_str());
-  //   decodeSensorData((const uint8_t *)value.c_str(), value.length());
+  NimBLEAttValue value = pCharacRofiState->getValue();
+  ESP_LOGD(TAG_C, "Processing RoFI State (size: %d)", value.length());
 }
 
 /** Called before notification or indication is sent,
@@ -102,7 +114,7 @@ void CharactCallbacksRofiState::onWrite(NimBLECharacteristic *pCharacRofiState,
  */
 void CharactCallbacksRofiState::onNotify(
     NimBLECharacteristic *pCharacRofiState) {
-  printf("Sending notification to clients\n");
+  ESP_LOGD(TAG_C, "onNotify() - RoFI State");
 }
 
 /**
@@ -110,21 +122,21 @@ void CharactCallbacksRofiState::onNotify(
  */
 void CharactCallbacksRofiState::onStatus(NimBLECharacteristic *pCharacRofiState,
                                          int code) {
-  printf("Notification/Indication return code: %d, %s\n", code,
-         NimBLEUtils::returnCodeToString(code));
+  ESP_LOGI(TAG_C, "Notification/Indication return code: %d, %s - RoFI State",
+           NimBLEUtils::returnCodeToString(code));
 }
 
 void CharactCallbacksRofiState::onSubscribe(
     NimBLECharacteristic *pCharacRofiState, NimBLEConnInfo &connInfo,
     uint16_t subValue) {
 
-  ESP_LOGI(TAG, "onSubscribe() type: %d", subValue);
+  ESP_LOGD(TAG_C, "onSubscribe() type: %d - RoFI State", subValue);
   if (subValue == 0) {
-    ESP_LOGI(TAG, "Unsubscribed");
+    ESP_LOGV(TAG_C, "Unsubscribed");
   } else if (subValue == 1) {
-    ESP_LOGI(TAG, "Notification enabled");
+    ESP_LOGV(TAG_C, "Notification enabled");
   } else if (subValue == 2) {
-    ESP_LOGI(TAG, "Indication enabled");
+    ESP_LOGV(TAG_C, "Indication enabled");
   }
 
   _subscribeRofiStateUpdate(subValue);
@@ -139,28 +151,33 @@ CharactCallbacksRofiCommand::CharactCallbacksRofiCommand(
 
 void CharactCallbacksRofiCommand::onRead(
     NimBLECharacteristic *pCharacRofiCommand, NimBLEConnInfo &connInfo) {
-  printf("%s : onRead(), value: %s\n",
-         pCharacRofiCommand->getUUID().toString().c_str(),
-         pCharacRofiCommand->getValue().c_str());
+  ESP_LOGD(TAG_C, "onRead() - RoFI Command");
 }
 
 void CharactCallbacksRofiCommand::onWrite(
     NimBLECharacteristic *pCharacRofiCommand, NimBLEConnInfo &connInfo) {
-  printf("%s : onWrite(), value: %s\n",
-         pCharacRofiCommand->getUUID().toString().c_str(),
-         pCharacRofiCommand->getValue().c_str());
+  NimBLEAttValue value = pCharacRofiCommand->getValue();
+  ESP_LOGD(TAG_C, "Processing RoFI Request (size: %d) - RoFI Command",
+           value.length());
 
-  printf("Characteristic written\n");
-  ESP_LOGI(TAG, "Characteristic written");
-  std::string value = pCharacRofiCommand->getValue();
-  ESP_LOGI(TAG, "Data received: %s", value.c_str());
-  ESP_LOGI(TAG, "Decoding RoFI Request");
-  int32_t packet_id = _nimBleCodec.decodeRofiRequest(
-      (const uint8_t *)value.c_str(), value.length());
+  bool success = true;
+  int32_t packet_id = 1;
+  std::string message = "Response OK";
+  try {
+    packet_id = _nimBleCodec.decodeRofiRequest(value.data(), value.length());
+  } catch (const std::exception &e) {
+    success = false;
+    std::cerr << e.what() << '\n';
+    message = "Response failed: " + std::string(e.what());
+    // if message length is too long, truncate it
+    if (message.length() > 100) {
+      message = message.substr(0, 100);
+    }
+  }
 
-  uint8_t buffer[400];
+  uint8_t buffer[600];
   size_t buffer_size = _nimBleCodec.encodeRofiResponse(
-      buffer, sizeof(buffer), true, packet_id, "Response OK");
+      buffer, sizeof(buffer), packet_id + 1, success, message);
   pCharacRofiCommand->setValue(buffer, buffer_size);
   pCharacRofiCommand->notify();
 }

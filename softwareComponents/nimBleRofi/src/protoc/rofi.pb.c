@@ -18,6 +18,9 @@ PB_BIND(Joint, Joint, AUTO)
 PB_BIND(Connector, Connector, AUTO)
 
 
+PB_BIND(RofiStateData, RofiStateData, AUTO)
+
+
 PB_BIND(RofiState, RofiState, AUTO)
 
 
@@ -33,10 +36,14 @@ PB_BIND(JointCommand, JointCommand, AUTO)
 PB_BIND(ConnectorCommand, ConnectorCommand, AUTO)
 
 
+PB_BIND(Message, Message, AUTO)
+
+
 PB_BIND(RofiRequest, RofiRequest, AUTO)
 
 
 PB_BIND(RofiResponse, RofiResponse, AUTO)
+
 
 
 

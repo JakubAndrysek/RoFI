@@ -18,7 +18,7 @@ install: $(VENV_DIR)/bin/activate
 # Generate protocol buffers
 generate-protocol: install
 	mkdir -p $(PY_OUT_DIR)
-	. $(VENV_DIR)/bin/activate && $(PYTHON) -m grpc_tools.protoc --proto_path=$(PROTO_SRC_DIR) --python_out=$(PY_OUT_DIR) --python_betterproto_out=$(PY_OUT_DIR) $(PROTO_FILE)
+	. $(VENV_DIR)/bin/activate && $(PYTHON) -m grpc_tools.protoc --proto_path=$(PROTO_SRC_DIR) --python_betterproto_out=$(PY_OUT_DIR) $(PROTO_FILE)
 
 # Clean the virtual environment
 clean:

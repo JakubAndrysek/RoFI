@@ -66,30 +66,40 @@ message Connector {
   float external_voltage = 9;
   float external_current = 10;
   LidarStatus lidar_status = 11;
-  float distance = 12;
+  uint32 distance = 12;
+}
+
+message RofiStateData {
+  int32 random_number = 1;
+  Descriptor descriptor = 2;
+  repeated Joint joints = 3;
+  repeated Connector connectors = 4;
+
+}
+
+enum RofiStateType {
+  STATE_SUCCESS = 0;
+  STATE_ERROR = 1;
 }
 
 message RofiState {
   uint32 packet_id = 1;
   int32 rofi_id = 2;
-  int32 random_number = 3;
-  Descriptor descriptor = 4;
-  repeated Joint joints = 5;
-  repeated Connector connectors = 6;
+  RofiStateType type = 3;
+  oneof state_type {
+    RofiStateData state_data = 4;
+    string error_message = 5;
+  }
 }
 
 enum DeviceCommandType {
   REBOOT = 0;
   SET_ID = 1;
-  SET_RANDOM_NUMBER = 2;
 }
 
 message DeviceCommand {
   DeviceCommandType command = 1;
-  oneof command_type {
-    int32 set_id = 2;
-    int32 set_random_number = 3;
-  }
+  oneof command_type { int32 set_id = 2; }
 }
 
 enum JointCommandType {
@@ -114,27 +124,30 @@ message JointCommand {
 }
 
 enum ConnectorCommandType {
-  SET_POSITION = 0;
-  CONNECT_POWER = 1;
-  DISCONNECT_POWER = 2;
-  SET_DISTANCE_MODE = 3;
+  SET_CONNECT = 0;
+  SET_DISCONNECT = 1;
+  CONNECT_POWER = 2;
+  DISCONNECT_POWER = 3;
+  SET_DISTANCE_MODE = 4;
 }
 
 message ConnectorCommand {
   uint32 connector_id = 1;
   ConnectorCommandType command = 2;
   oneof command_type {
-    ConnectorPosition set_position = 3;
-    ConnectorLine connect_power = 4;
-    ConnectorLine disconnect_power = 5;
-    LidarDistanceMode set_distance_mode = 6;
+    ConnectorLine connect_power = 3;
+    ConnectorLine disconnect_power = 4;
+    LidarDistanceMode set_distance_mode = 5;
   }
 }
 
+message Message { string message = 1; }
+
 enum CommandTypeRequest {
-  DEVICE = 0;
-  JOINT = 1;
-  CONNECTOR = 2;
+  MESSAGE = 0;
+  DEVICE = 1;
+  JOINT = 2;
+  CONNECTOR = 3;
 }
 
 // Request and response messages
@@ -142,19 +155,18 @@ enum CommandTypeRequest {
 // Request is sent from the client to the RoFI
 message RofiRequest {
   int32 packet_id = 1;
-  int32 rofi_id = 2;
   CommandTypeRequest command = 3;
   oneof command_type {
-    DeviceCommand device = 4;
-    JointCommand joint = 5;
-    ConnectorCommand connector = 6;
+    Message message = 4;
+    DeviceCommand device = 5;
+    JointCommand joint = 6;
+    ConnectorCommand connector = 7;
   }
 }
 
 // Response is sent from the RoFI to the client
 message RofiResponse {
   int32 packet_id = 1;
-  int32 rofi_id = 2;
   int32 success = 3;
   string message = 4;
 }
