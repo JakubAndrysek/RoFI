@@ -186,6 +186,11 @@ public:
         return _id;
     }
 
+    void setId( RoFI::Id id ) override
+    {
+        throw std::logic_error( "setId not implemented" );
+    }
+
     Joint getJoint( int index ) override;
     Connector getConnector( int index ) override;
 

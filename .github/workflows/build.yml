@@ -2,8 +2,8 @@ name: "Build & test"
 on:
   push:
   pull_request:
-  schedule:
-    - cron: '0 3 * * *'
+  # schedule:
+  #   - cron: '0 3 * * *'
 jobs:
   build_desktop:
     name: "Build suite desktop"

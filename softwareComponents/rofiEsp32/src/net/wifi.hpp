@@ -15,7 +15,7 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/event_groups.h>
 
-namespace rofi::fi::detail {
+namespace esp::wifi::detail {
 
 enum WiFiBits {
     ConnectedBit = 1 << 0,
@@ -23,18 +23,9 @@ enum WiFiBits {
     GotIPBit = 1 << 2
 };
 
-} // namespace rofi::fi::detail
+} // namespace esp::wifi::detail
 
-namespace rofi::fi {
-
-inline void initNvs() {
-    esp_err_t ret = nvs_flash_init();
-    if ( ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND ) {
-      ESP_ERROR_CHECK( nvs_flash_erase() );
-      ret = nvs_flash_init();
-    }
-    ESP_ERROR_CHECK( ret );
-}
+namespace esp {
 
 class WiFiConnector {
 public:
@@ -77,15 +68,15 @@ public:
         _async = false;
         _maxAttempts = maxAttempts;
         _successCallback = [this]() {
-            xEventGroupSetBits( _eventBits, detail::ConnectedBit );
+            xEventGroupSetBits( _eventBits, wifi::detail::ConnectedBit );
         };
         _ipCallback = [this]( esp_ip4_addr_t ) {
-            xEventGroupSetBits( _eventBits, detail::GotIPBit );
+            xEventGroupSetBits( _eventBits, wifi::detail::GotIPBit );
         };
         _errorCallback = [this]( const std::string&, int attempt ) {
             if ( attempt != _maxAttempts )
                 return true;
-            xEventGroupSetBits( _eventBits, detail::FailedBit );
+            xEventGroupSetBits( _eventBits, wifi::detail::FailedBit );
             return false;
         };
         return *this;
@@ -129,19 +120,19 @@ public:
             return true;
 
         EventBits_t bits = xEventGroupWaitBits( _eventBits,
-            detail::ConnectedBit | detail::FailedBit,
+            wifi::detail::ConnectedBit | wifi::detail::FailedBit,
             pdFALSE,
             pdFALSE,
             portMAX_DELAY );
-        if ( bits & detail::ConnectedBit )
+        if ( bits & wifi::detail::ConnectedBit )
             return true;
-        if ( bits & detail::FailedBit )
+        if ( bits & wifi::detail::FailedBit )
             return false;
         __builtin_unreachable();
     }
 
     void waitForIp() {
-        xEventGroupWaitBits( _eventBits, detail::GotIPBit, pdFALSE, pdFALSE,
+        xEventGroupWaitBits( _eventBits, wifi::detail::GotIPBit, pdFALSE, pdFALSE,
             portMAX_DELAY );
     }
 
@@ -188,13 +179,9 @@ private:
     esp_ip4_addr_t _ipAddr;
 };
 
-inline void delayMs( int msCount ) {
-    vTaskDelay( msCount / portTICK_PERIOD_MS );
-}
-
 /**
  * Perform authentication for wlan_fi
  */
 void authWlanFi(const char* username, const char* password );
 
-} // namespace rofi::fi
+} // namespace esp

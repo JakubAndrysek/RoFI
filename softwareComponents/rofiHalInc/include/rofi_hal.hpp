@@ -207,7 +207,7 @@ enum class LidarStatus : signed char {
     Error = 0b00,
     /// Status command was received before lidar initilized and received measurements.
     NotMeasured = 0b01,
-    /// Measured data are outside of lidar available range 
+    /// Measured data are outside of lidar available range
     /// meaning that data could be valid but DOESN'T HAVE TO BE.
     /// Usually means that measured data is below or above of range we can measure.
     /// Also could be caused by wrong distance mode, setting different one could resolve this.
@@ -544,6 +544,7 @@ public:
 
     public:
         virtual Id getId() const = 0;
+        virtual void setId( Id id ) = 0;
         virtual Joint getJoint( int index ) = 0;
         virtual Connector getConnector( int index ) = 0;
         virtual Descriptor getDescriptor() const = 0;
@@ -574,6 +575,13 @@ public:
      * \return RoFI Id
      */
     Id getId() const { return _impl->getId(); }
+
+    /**
+     * \brief Set RoFI Id.
+     *
+     * \param id new RoFI Id
+     */
+    void setId( Id id ) { _impl->setId( id ); }
 
     /**
      * \brief Get proxy for controlling Joint.
