@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <lwip/pbuf.h>
 #include <lwip/netif.h>
 #include <lwip/ip.h>
